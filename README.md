@@ -1,4 +1,6 @@
-# llm-faffing
+# LLM Faffing
+
+This project was created using `bun init` in bun v1.0.18. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
 
 To install dependencies:
 
@@ -6,10 +8,12 @@ To install dependencies:
 bun install
 ```
 
-To run:
+## Experiments
 
-```bash
-bun run index.ts
-```
+- [Function calling](src/01-function-calling/index.ts)
 
-This project was created using `bun init` in bun v1.0.18. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+  Make artist-related requests to MP based on user input.
+
+- TKTK
+
+- TKTK
