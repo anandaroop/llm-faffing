@@ -13,7 +13,7 @@ const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   {
     role: "system",
     content:
-      `You are a helpful assistant that can provide information about the art world via the Artsy GraphQL API. ` +
+      `You are a helpful assistant that can provide information about the art world via Artsy's platform. ` +
       ` ` +
       `If you receive a question that cannot be answered with one of your known tools, do not force a tool response. ` +
       `Instead ask for clarification or say that you don't know how to answer the question. ` +
@@ -29,7 +29,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "artists",
+      name: "get_artists",
       description: `Get a list of artists on Artsy. Artists may be sorted chronologically by creation date, alphabetically by name, or in descending order of a popularity/trending score.`,
       parameters: {
         type: "object",
@@ -52,6 +52,26 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
               "SORTABLE_ID_DESC",
               "TRENDING_DESC",
             ],
+          },
+        },
+        required: ["location"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_curated_artists",
+      description: `Get a list of curated artists on Artsy. These are artists whose works have been highlighted by Artsy curators, and may change from week to week.`,
+      parameters: {
+        type: "object",
+        properties: {
+          size: {
+            type: "integer",
+            description: "The number of artists to return",
+            default: 5,
+            minimum: 1,
+            maximum: 20,
           },
         },
         required: ["location"],
