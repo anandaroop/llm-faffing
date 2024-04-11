@@ -1,13 +1,31 @@
 /*
- * Sample code from https://platform.openai.com/docs/api-reference/chat/create, lightly TS-ified
+ * This example demonstrates how to use the OpenAI API to create a chat completion that can call functions.
+ *
+ * The toy use case here is to ask for a list of artists. Depending on how the user phrases the question, the LLM
+ * will determine the correct function to call, then shape up the results into a nicely formatted response.
+ *
+ * Usage examples:
+ *
+ * bun run src/01-function-calling/index.ts "who is popular on artsy right now?" | jq
+ * bun run src/01-function-calling/index.ts "who is artsy into these days?" | jq
+ * bun run src/01-function-calling/index.ts "who is new on artsy?" | jq
+ * bun run src/01-function-calling/index.ts "give me the last 17 artists on artsy, alphabetically" | jq
  */
 
 import OpenAI from "openai";
 
+const openai = new OpenAI(); // uses `OPENAI_API_KEY` from .env
+
+/*
+ * Get user input
+ */
+
 const input =
   process.argv.slice(2).join(" ") ?? "Who's trending on Artsy right now?";
 
-const openai = new OpenAI();
+/*
+ * Create the message payload for the chat completion
+ */
 
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   {
@@ -24,6 +42,13 @@ const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     content: input,
   },
 ];
+
+/*
+ * Define the tools that the chat completion can use:
+ *
+ * 1. get_artists: Get a list of artists on Artsy
+ * 2. get_curated_artists: Get a list of curated artists on Artsy
+ */
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -80,6 +105,10 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   },
 ];
 
+/*
+ * Call the chat completion and get the initial response, which may be a simple response or a function call
+ */
+
 const response = await openai.chat.completions.create({
   model: "gpt-3.5-turbo",
   temperature: 0,
@@ -91,13 +120,15 @@ const response = await openai.chat.completions.create({
 console.log(JSON.stringify(messages));
 console.log(JSON.stringify(response.choices[0].message));
 
+/*
+ * If the response WAS a function call, then actually call the function (locally defined, further down) to get the result from Artsy's API
+ */
+
 if (response.choices[0].finish_reason === "tool_calls") {
   const name = response.choices[0].message.tool_calls?.[0].function.name;
   const args = JSON.parse(
     response.choices[0].message.tool_calls?.[0].function.arguments || "null"
   );
-
-  console.log(JSON.stringify({ name, args }));
 
   let artists;
 
@@ -137,28 +168,13 @@ if (response.choices[0].finish_reason === "tool_calls") {
       ],
     });
 
-    // console.log(JSON.stringify(response.choices[0].message));
     console.error(response.choices[0].message.content);
   }
 }
 
-async function metaphysics(args: {
-  query: string;
-  variables: Record<string, unknown>;
-}) {
-  const { query, variables } = args;
-
-  const url = "https://metaphysics-production.artsy.net/v2";
-  const headers = {
-    "Content-Type": "application/json",
-  };
-  const body = JSON.stringify({ query, variables });
-  const options = { method: "POST", headers, body };
-
-  const response = await fetch(url, options);
-  const json = await response.json();
-  return json;
-}
+/*
+ * Define the get_artists() and get_curated_artists() functions that can be called by the chat completion
+ */
 
 async function get_artists(args: { size: number; sort: string }) {
   const query = `query GetArtists($size: Int!, $sort: ArtistSorts) {
@@ -203,4 +219,26 @@ async function get_curated_artists(args: { size: number }) {
 
   const response = await metaphysics({ query, variables });
   return response;
+}
+
+/*
+ * Define the API helpers the the function calls will make use of
+ */
+
+async function metaphysics(args: {
+  query: string;
+  variables: Record<string, unknown>;
+}) {
+  const { query, variables } = args;
+
+  const url = "https://metaphysics-production.artsy.net/v2";
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  const body = JSON.stringify({ query, variables });
+  const options = { method: "POST", headers, body };
+
+  const response = await fetch(url, options);
+  const json = await response.json();
+  return json;
 }
